@@ -13,6 +13,21 @@ A simplified cross-platform utility to prevent "zombie" dev-server processes fro
 | **macOS** | Intel (x64) | [zombie-watcher-macos](https://github.com/v01g/ZombieDevWatcher/releases/latest/download/zombie-watcher-macos) |
 | **macOS** | Silicon (ARM64) | [zombie-watcher-macos-arm64](https://github.com/v01g/ZombieDevWatcher/releases/latest/download/zombie-watcher-macos-arm64) | 
 
+## 📦 Install via NPM (Requires Bun)
+
+If you have [Bun installed](https://bun.sh/), you can run it directly:
+
+```bash
+# Run one-off
+bunx zombie-dev-watcher
+
+# Install globally
+npm install -g zombie-dev-watcher
+zombie-watcher
+```
+
+## Description
+
 It launches itself on a **lock port** (default `322`) and watches one or more **target ports** (default `5173`). When a new process starts on a higher port in the range, the watcher automatically kills the old process to free up resources.
 
 ## Key Features
@@ -55,3 +70,14 @@ bun install
 # Build for your current platform
 bun run build
 ```
+
+### GitHub Workflow
+This repository includes a manual GitHub workflow to build and release the executable for all platforms:
+- `zombie-watcher-win.exe` (Windows x64)
+- `zombie-watcher-linux` (Linux x64)
+- `zombie-watcher-macos` (macOS x64)
+- `zombie-watcher-macos-arm64` (macOS Silicon)
+
+1. Go to **Actions** tab.
+2. Select **Manual Release Build**.
+3. Click **Run workflow**.

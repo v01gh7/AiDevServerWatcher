@@ -2,11 +2,17 @@
   "name": "zombie-dev-watcher",
   "version": "1.0.0",
   "description": "Cross-platform CLI utility to kill zombie dev-server processes (Windows, macOS, Linux)",
+  "main": "dist/index.js",
   "bin": {
-    "zombie-watcher": "src/index.ts"
+    "zombie-watcher": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "bun build src/index.ts --compile --outfile zombie-watcher.exe"
+    "build": "bun build src/index.ts --compile --outfile zombie-watcher.exe",
+    "build:js": "bun build src/index.ts --target bun --outfile dist/index.js",
+    "prepublishOnly": "bun run build:js"
   },
   "dependencies": {
     "chalk": "^5.6.2",
