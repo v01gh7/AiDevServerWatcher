@@ -57,7 +57,7 @@ zombie-watcher --dry-run
 ### Options
 - `--base <ports>`: Comma-separated list of base ports to watch (Default: `5173`).
 - `--range <n>`: Range to scan for each base port (Default: `20`).
-- `--filter <names>`: Semicolon-separated list of allowed process names (Default: `node;nuxi;vite;npm`).
+- `--filter <names>`: Semicolon-separated list of allowed process names (Default: `bun;node;npm;npx;pnpm;yarn;vite;deno;go;air;python;python3;uvicorn;flask;ruby;rails;java;gradle;mvn;php;swift;dotnet`).
 - `--strategy <type>`: `chain` (kill n-1) or `kill-base` (kill base).
 
 ## Installation / Build
