@@ -64,3 +64,4 @@ VERIFICATION_*
 FEATURE_*
 *.exe
 *.build
+*.bun-build
