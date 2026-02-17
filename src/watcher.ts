@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { getPorts, getProcessInfo, killProcess } from "./system";
+import { getAllTcpPorts, getProcessInfo, killProcess } from "./system";
 import { type WatcherConfig, type ProcessInfo } from "./types";
 import chalk from "chalk";
 
@@ -14,14 +14,19 @@ export class PortWatcher extends EventEmitter {
     }
 
     public async start() {
-        console.log(chalk.cyan(`[Watcher] Starting on port ${this.config.basePort} (+${this.config.range})...`));
+        console.log(chalk.cyan(`[Watcher] Starting...`));
+        console.log(chalk.cyan(`[Watcher] Monitoring ports:`));
+        for (const base of this.config.basePorts) {
+            console.log(chalk.cyan(`  - ${base} (+${this.config.range})`));
+        }
+
         if (this.config.dryRun) {
             console.log(chalk.yellow(`[Dry-Run] No processes will be actually killed.`));
         }
         
         // Initial scan
-        this.knownPorts = await getPorts(this.config.basePort, this.config.range);
-        console.log(chalk.gray(`[Watcher] Initial scan found ${this.knownPorts.size} active ports.`));
+        this.knownPorts = await getAllTcpPorts();
+        console.log(chalk.gray(`[Watcher] Initial scan found ${this.knownPorts.size} active TCP ports.`));
 
         this.intervalId = setInterval(() => this.tick(), this.config.interval);
     }
@@ -35,28 +40,43 @@ export class PortWatcher extends EventEmitter {
     }
 
     private async tick() {
-        const currentPorts = await getPorts(this.config.basePort, this.config.range);
+        const allPorts = await getAllTcpPorts();
         
-        // Detect new ports
-        for (const [port, pid] of currentPorts) {
-            if (!this.knownPorts.has(port)) {
-                // New port detected!
-                this.handleNewPort(port, pid);
-            } else {
-                // Check if PID changed on same port (restart on same port)
-                const oldPid = this.knownPorts.get(port);
-                if (oldPid !== pid) {
-                    console.log(chalk.gray(`[Info] Port ${port} PID changed: ${oldPid} -> ${pid}`));
+        // Check for new ports relevant to ANY of our config.basePorts
+        for (const [port, pid] of allPorts) {
+            // Is this port within any of our monitored ranges?
+            const relevantBase = this.getRelevantBase(port);
+            
+            if (relevantBase !== -1) {
+                // It's a monitored port.
+                if (!this.knownPorts.has(port)) {
+                    // New port detected!
+                    this.handleNewPort(port, pid, relevantBase);
+                } else {
+                    // Check if PID changed
+                    const oldPid = this.knownPorts.get(port);
+                    if (oldPid !== pid) {
+                        console.log(chalk.gray(`[Info] Port ${port} PID changed: ${oldPid} -> ${pid}`));
+                    }
                 }
             }
         }
 
-        // Update detection state
-        this.knownPorts = currentPorts;
+        // Update detection state (we can store ALL ports, it's fine, or filter. Storing all is 0(1) for next diff)
+        this.knownPorts = allPorts;
     }
 
-    private async handleNewPort(newPort: number, newPid: number) {
-        console.log(chalk.green(`[Detected] New process on port ${newPort} (PID: ${newPid})`));
+    private getRelevantBase(port: number): number {
+        for (const base of this.config.basePorts) {
+            if (port >= base && port <= base + this.config.range) {
+                return base;
+            }
+        }
+        return -1;
+    }
+
+    private async handleNewPort(newPort: number, newPid: number, basePort: number) {
+        console.log(chalk.green(`[Detected] New process on port ${newPort} (PID: ${newPid}) [Base: ${basePort}]`));
         
         let targetPort = -1;
 
@@ -65,15 +85,16 @@ export class PortWatcher extends EventEmitter {
             targetPort = newPort - 1;
         } else if (this.config.strategy === 'kill-base') {
             // Kill base if new > base
-            if (newPort > this.config.basePort) {
-                targetPort = this.config.basePort;
+            if (newPort > basePort) {
+                targetPort = basePort;
             }
         }
 
-        // If target valid and exists
-        if (targetPort >= this.config.basePort && this.knownPorts.has(targetPort)) {
+        // Strategy check: ensure targetPort is within range and is >= basePort
+        if (targetPort >= basePort && this.knownPorts.has(targetPort)) {
             const targetPid = this.knownPorts.get(targetPort);
-            if (!targetPid || targetPid === newPid) return; // Don't kill self if logic is weird
+            // Don't kill self (sanity check) or if it's the same process (pid comparison)
+            if (!targetPid || targetPid === newPid) return; 
 
             await this.tryKill(targetPort, targetPid, newPort);
         }

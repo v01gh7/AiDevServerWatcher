@@ -1,15 +1,12 @@
 import { spawn } from "bun";
 import { type ProcessInfo } from "./types";
 
-export async function getPorts(base: number, range: number): Promise<Map<number, number>> {
+
+export async function getAllTcpPorts(): Promise<Map<number, number>> {
     const portMap = new Map<number, number>();
-    const maxPort = base + range;
 
     try {
         // Run netstat to get all TCP listening ports
-        // -a: all connections/ports
-        // -n: numeric format
-        // -o: include PID
         const proc = spawn(["netstat", "-ano", "-p", "TCP"], {
             stdout: "pipe",
             stderr: "pipe",
@@ -30,9 +27,7 @@ export async function getPorts(base: number, range: number): Promise<Map<number,
             const portMatch = localAddress.match(/:(\d+)$/);
             if (portMatch) {
                 const port = parseInt(portMatch[1], 10);
-                if (port >= base && port <= maxPort) {
-                    portMap.set(port, pid);
-                }
+                portMap.set(port, pid);
             }
         }
     } catch (error) {
@@ -41,6 +36,7 @@ export async function getPorts(base: number, range: number): Promise<Map<number,
 
     return portMap;
 }
+
 
 export async function getProcessInfo(pid: number): Promise<ProcessInfo | null> {
     try {

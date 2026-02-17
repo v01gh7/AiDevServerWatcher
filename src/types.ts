@@ -1,7 +1,7 @@
 
 
 export interface WatcherConfig {
-  basePort: number;
+  basePorts: number[];
   range: number;
   interval: number;
   strategy: 'chain' | 'kill-base';
