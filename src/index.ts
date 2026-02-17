@@ -12,13 +12,26 @@ program
   .name("port-watcher")
   .description("CLI utility to kill zombie dev-server processes on Windows")
   .version("1.0.0")
-  .requiredOption("-b, --base <number>", "Base port to watch", parseIntArg)
+  .option("-b, --base <number>", "Base port to watch", parseIntArg, 5173)
   .option("-r, --range <number>", "Port range to scan (base to base+range)", parseIntArg, 20)
   .option("-i, --interval <number>", "Polling interval in ms", parseIntArg, 1000)
   .option("-s, --strategy <type>", "Kill strategy: 'chain' (kill n-1) or 'kill-base' (kill base)", "chain")
   .option("-f, --filter <names>", "Semicolon-separated process names/commands to allow killing (e.g. 'node;nuxi')", "node;nuxi;vite;npm")
   .option("-d, --dry-run", "Log what would be killed without killing", false)
-  .action((options) => {
+  .action(async (options) => { // Async for Bun.serve
+    // 1. Singleton Lock: Launch dummy server on port 322
+    try {
+        const lockServer = Bun.serve({
+            port: 322,
+            fetch(req) { return new Response("Port Watcher Active"); }
+        });
+        console.log(chalk.gray(`[System] Watcher process bound to port 322 (Singleton Lock).`));
+    } catch (e) {
+        console.error(chalk.red.bold(`[Error] Could not bind to port 322.`));
+        console.error(chalk.yellow(`Another instance of Port Watcher might be running.`));
+        process.exit(1);
+    }
+    
     // Validate strategy
     if (options.strategy !== 'chain' && options.strategy !== 'kill-base') {
         console.error(chalk.red(`Invalid strategy: ${options.strategy}. Use 'chain' or 'kill-base'.`));
