@@ -9,7 +9,7 @@ const program = new Command();
 const parseIntArg = (val: string) => parseInt(val, 10);
 
 program
-  .name("port-watcher")
+  .name("zombie-watcher")
   .description("CLI utility to kill zombie dev-server processes on Windows")
   .version("1.0.0")
   .option("-b, --base <ports>", "Base ports to watch (comma-separated)", "5173")

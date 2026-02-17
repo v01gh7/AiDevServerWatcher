@@ -25,7 +25,7 @@ jobs:
         run: bun install
         
       - name: Build Executable
-        run: bun build src/index.ts --compile --outfile port-watcher.exe
+        run: bun build src/index.ts --compile --outfile zombie-watcher.exe
         
       - name: Create Tag
         run: |
@@ -41,7 +41,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ inputs.tag_name }}
-          files: port-watcher.exe
+          files: zombie-watcher.exe
           fail_on_unmatched_files: true
           generate_release_notes: true
         env:

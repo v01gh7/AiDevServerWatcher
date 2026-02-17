@@ -1,4 +1,4 @@
-# Port Watcher
+# Zombie Dev Watcher 🧟
 
 A simplified utility to prevent "zombie" dev-server processes from accumulating on your system. 
 
@@ -17,13 +17,13 @@ It launches itself on a **lock port** (default `322`) and watches one or more **
 
 ```bash
 # Run with default settings (Base: 5173, Lock Port: 322)
-port-watcher.exe
+zombie-watcher.exe
 
 # Watch multiple ports (e.g., Vite and a backend API)
-port-watcher.exe --base "5173,3000,8080"
+zombie-watcher.exe --base "5173,3000,8080"
 
 # Dry-run mode (see what would be killed)
-port-watcher.exe --dry-run
+zombie-watcher.exe --dry-run
 ```
 
 ### Options
@@ -39,7 +39,8 @@ This project uses **Bun**.
 ### Build Manually
 ```bash
 bun install
-bun build src/index.ts --compile --outfile port-watcher.exe
+bun run build
+# Creates: zombie-watcher.exe
 ```
 
 ### GitHub Workflow
@@ -48,4 +49,4 @@ This repository includes a manual GitHub workflow to build and release the execu
 2. Select **Manual Release Build**.
 3. Click **Run workflow**.
 
-This will build the executable and update the release tag.
+This will build `zombie-watcher.exe` and update the release tag.
