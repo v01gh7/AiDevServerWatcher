@@ -1,0 +1,64 @@
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Vite ---
+dist/
+.vite/
+.vite_deps/
+*.local
+
+# --- Logs & temp ---
+*.log
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.pem
+*.crx
+*.png
+*.jpg
+*.svg
+*.zip
+PIPIT/
+# --- Env files (если будут использоваться) ---
+.env
+.env.*
+!.env.example
+
+# --- Chrome extension build ---
+chrome-extension.zip
+*.crx
+
+# --- TypeScript cache (если используешь) ---
+tsconfig.tsbuildinfo
+
+# --- OS cache ---
+ehthumbs.db
+Desktop.ini
+
+# --- Misc ---
+*.bak
+*.orig
+
+# --- Feature Database (autoforge) ---
+features.db
+features.db-shm
+features.db-wal
+browser-verify*
+console-verify*
+SESSION_*
+test-*
+VERIFICATION_*
+FEATURE_*
