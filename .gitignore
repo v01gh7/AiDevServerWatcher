@@ -62,3 +62,5 @@ SESSION_*
 test-*
 VERIFICATION_*
 FEATURE_*
+*.exe
+*.build
