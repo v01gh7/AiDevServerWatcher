@@ -178,8 +178,8 @@ export async function getMatchingProcesses(filterNames: string[]): Promise<Proce
     
     try {
         if (isWin) {
-            // wmic process where "Name='node.exe' OR Name='bun.exe'" get CommandLine,ProcessId,CreationDate /format:csv
-            const cmd = ["wmic", "process", "where", clause, "get", "CommandLine,ProcessId,CreationDate", "/format:csv"];
+            // wmic process where "..." get CommandLine,ProcessId,CreationDate,ParentProcessId /format:csv
+            const cmd = ["wmic", "process", "where", clause, "get", "CommandLine,ProcessId,CreationDate,ParentProcessId", "/format:csv"];
             
             // Run with timeout race to prevent hanging
             const proc = spawn(cmd, { stdout: "pipe", stderr: "pipe" });
@@ -200,41 +200,59 @@ export async function getMatchingProcesses(filterNames: string[]): Promise<Proce
             const lines = output.trim().split(/[\r\n]+/);
             const results: ProcessInfo[] = [];
 
-            // CSV Header: Node,CommandLine,CreationDate,ProcessId
-            // But order can vary? Usually alphabetical by property name in GET if not CSV?
-            // checking wmic csv output: Node,CommandLine,CreationDate,ProcessId
-            
+            // CSV Header: Node,CommandLine,CreationDate,ParentProcessId,ProcessId
+            // Note: WMIC output order can be alphabetical explicitly if not using /format:csv, 
+            // but with /format:csv it typically follows the GET order OR alphabetical.
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
+
+                // Improved Parsing using Regex to handle commas in command line safely.
+                // Expected format: Node,CommandLine,CreationDate,ParentProcessId,ProcessId
+                // Regex: capture everything until the last 3 commas.
+                // ^(.*)          From start, capture greedy (Node + Cmd)
+                // ,([^,]+)       Comma, then Date (non-greedy/no comma)
+                // ,(\d+)         Comma, then PPID (digits)
+                // ,(\d+)         Comma, then PID (digits)
+                // \s*            Optional whitespace/CR/LF at end
                 
-                // CSV parsing logic (naive split by comma might fail if comma in command line)
-                // wmic csv format is usually: Node, "Value1", "Value2", ...
-                // But complex command lines might be tricky.
-                // Let's rely on the fact that PID and Date are at the end ?? No.
-                // We'll use a regex to capture the end parts and the rest is command line.
+                const match = line.match(/^(.*),([^,]+),(\d+),(\d+)\s*$/);
                 
-                // Example: DESKTOP-XXX,"C:\path\node.exe args",20240101...,1234
-                // The last field is PID (digits). Second to last is Date (digits+dots+zones)
+                if (!match) {
+                    if (!line.includes("ParentProcessId")) {
+                        console.log(`[DEBUG] Line did not match regex: ${line}`);
+                    }
+                    continue;
+                }
+
+                // match[1] = Node,Cmd
+                // match[2] = Date
+                // match[3] = PPID
+                // match[4] = PID
                 
-                // Regex: ^([^,]+),(.*),(\d{14}\.\d{6}[+-]\d{3}),(\d+)$
-                // Note: CommandLine might be empty or unquoted? WMIC usually quotes string fields in CSV.
-                
-                // A safer robust way for the middle part:
-                const parts = line.split(',');
-                if (parts.length < 4) continue;
-                
-                const pidStr = parts[parts.length - 1];
-                const dateStr = parts[parts.length - 2];
-                // The rest in the middle is CommandLine (joined back just in case it contained commas)
-                // Node name is index 0.
-                const cmdLine = parts.slice(1, parts.length - 2).join(',');
+                const ppidStr = match[3];
+                const pidStr = match[4];
+                const dateStr = match[2];
                 
                 const pid = parseInt(pidStr, 10);
+                const ppid = parseInt(ppidStr, 10);
+
+                
+                // Clean Command Line:
+                // match[1] contains "Node,CommandLine".
+                // We need to strip the Node name.
+                // Assuming Node name is first field up to first comma.
+                const nodeCmd = match[1];
+                const firstComma = nodeCmd.indexOf(',');
+                let cmdLine = (firstComma !== -1) ? nodeCmd.substring(firstComma + 1) : nodeCmd;
+                
+                cmdLine = cmdLine.replace(/^"|"$/g, ''); // Strip outer quotes
+
                 if (!isNaN(pid)) {
                     results.push({
                         pid,
-                        command: cmdLine.replace(/^"|"$/g, ''), // Strip surrounding quotes from CSV
+                        ppid: isNaN(ppid) ? undefined : ppid,
+                        command: cmdLine, // Strip surrounding quotes
                         creationDate: dateStr
                     });
                 }

@@ -15,6 +15,7 @@ export interface ProcessInfo {
   command: string;
   cwd?: string;
   creationDate?: string;
+  ppid?: number;
 }
 
 export type PortMap = Map<number, ProcessInfo>;

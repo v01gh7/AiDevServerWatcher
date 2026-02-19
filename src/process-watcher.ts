@@ -8,6 +8,7 @@ interface ProcessRecord {
     command: string;
     firstSeen: number; // Timestamp
     creationDate?: string;
+    ppid?: number;
 }
 
 export class ProcessWatcher extends EventEmitter {
@@ -108,7 +109,8 @@ export class ProcessWatcher extends EventEmitter {
                     pid: proc.pid,
                     command: proc.command,
                     firstSeen: now,
-                    creationDate: proc.creationDate
+                    creationDate: proc.creationDate,
+                    ppid: proc.ppid
                 };
                 this.knownProcesses.set(proc.pid, record);
             }
@@ -129,35 +131,68 @@ export class ProcessWatcher extends EventEmitter {
             }
         }
 
-        // 4. Logic: Duplicate Detection & Cleanup
+        // 4. Logic: Duplicate Detection & Cleanup (Cluster by PPID)
         for (const [cmd, records] of byCommand) {
              if (records.length > 1) {
-                 // Sort by creation time (using firstSeen or creationDate if available)
-                 // If creationDate is available (YYYYMMDD...), use it.
-                 // Otherwise fallback to firstSeen.
-                 
-                 records.sort((a, b) => {
-                     // We want to keep the NEWEST.
-                     // So we sort ascending by age? 
-                     // No, we want to identify the OLDEST to kill.
-                     // Sort: Oldest first.
-                     return this.getStartTime(a) - this.getStartTime(b);
+                 // Group by PPID to identify "Clusters" (Siblings)
+                 const clusters = new Map<number, ProcessRecord[]>();
+                 const noPpidRecords: ProcessRecord[] = [];
+
+                 for (const r of records) {
+                     if (r.ppid !== undefined) {
+                         if (!clusters.has(r.ppid)) clusters.set(r.ppid, []);
+                         clusters.get(r.ppid)!.push(r);
+                     } else {
+                         noPpidRecords.push(r);
+                     }
+                 }
+
+                 // Treat no-ppid records as their own individual clusters
+                 for (const r of noPpidRecords) {
+                     // Use negative PID as fake cluster ID to avoid collision
+                     clusters.set(-r.pid, [r]);
+                 }
+
+                 // Now we have a list of clusters. We want to keep the NEWEST CLUSTER.
+                 // Cluster start time = Start time of the EARLIEST process in the cluster.
+                 // (Or maybe the parent's start time? We don't have parent's start time easily.)
+                 // Let's use the earliest process in the cluster as the proxy for "Cluster Start Time".
+
+                 const clusterInfos = Array.from(clusters.entries()).map(([ppid, members]) => {
+                     // Sort members by start time
+                     members.sort((a, b) => this.getStartTime(a) - this.getStartTime(b));
+                     return {
+                         ppid,
+                         members,
+                         startTime: this.getStartTime(members[0])
+                     };
                  });
 
-                 // records[0] is oldest, records[length-1] is newest.
-                 // We want to keep the NEWEST (last one).
-                 // Kill all others.
-                 
-                 const newest = records[records.length - 1];
-                 
-                 for (let i = 0; i < records.length - 1; i++) {
-                     const toKill = records[i];
-                     if (toKill.pid === newest.pid) continue; // Should not happen given logic
+                 // Sort clusters by start time (Oldest to Newest)
+                 clusterInfos.sort((a, b) => a.startTime - b.startTime);
+
+                 // Keep the NEWEST cluster. Kill all others.
+                 const newestCluster = clusterInfos[clusterInfos.length - 1];
+
+                 if (clusterInfos.length > 1) {
+                     console.log(chalk.magenta(`[CLUSTERS] Found ${clusterInfos.length} process clusters for command.`));
+                     console.log(chalk.gray(`            Cmd: "${chalk.white(cmd)}"`));
                      
-                     console.log(chalk.red.bold(`[DUPLICATE] Found ${records.length} instances of same command.`));
-                     console.log(chalk.yellow(`            Keeping PID ${newest.pid} (Newest)`));
-                     await this.kill(toKill.pid, "Duplicate Instance");
+                     for (let i = 0; i < clusterInfos.length - 1; i++) {
+                         const oldCluster = clusterInfos[i];
+                         console.log(chalk.yellow(`            Killing Old Cluster (PPID: ${oldCluster.ppid}, Count: ${oldCluster.members.length})`));
+                         
+                         for (const member of oldCluster.members) {
+                             await this.kill(member.pid, `Old Instance (Cluster PPID ${oldCluster.ppid})`);
+                         }
+                     }
+                     
+                     console.log(chalk.green(`            Keeping Newest Cluster (PPID: ${newestCluster.ppid}, Count: ${newestCluster.members.length})`));
                  }
+                 
+                 // Note: If clusterInfos.length === 1, that means we have multiple processes 
+                 // but they are all in the SAME cluster (Siblings). We do NOTHING. 
+                 // This fixes the "Autoforge workers" issue.
              }
         }
 

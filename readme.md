@@ -77,12 +77,23 @@ zombie-watcher --base "5173,3000,8080"
 
 Matches processes by **exact command line**. Useful for scripts that don't bind ports or when you want to ensure only one instance of a specific task runs.
 
-```bash
-# Watch for duplicate node/bun processes and kill the old ones
-zombie-watcher --mode process --filter "node;bun"
+#### ✨ Features
+1. **Smart Clustering**: Identifies "clusters" of processes (e.g., a tool spawning multiple workers).
+   - If you run `autoforge` or `vite` which spawns 4 worker processes, they are treated as a single group (based on Parent Process ID).
+   - The watcher only kills **older clusters** when a **new cluster** triggers, preventing it from killing its own workers.
+2. **Relative Max Age**: If you start the watcher with `--max-age 30`, existing processes running for hours won't be killed immediately. Their "age" counts from the moment the watcher starts (grace period).
+3. **Cleanup Mode**: Use `--cleanup` to run a one-off check that respects *absolute* process age (no grace period).
 
-# Kill any node process that runs longer than 30 minutes
+```bash
+# Watch for duplicate node/bun processes
+# If you start a new instance, the old one (and its workers) will be killed.
+zombie-watcher --mode process --filter "node;bun;autoforge"
+
+# Kill any node process that runs longer than 30 minutes (Relative to watcher start)
 zombie-watcher --mode process --max-age 30
+
+# One-Off Cleanup: Kill processes older than 60 mins IMMEDIATELY
+zombie-watcher --mode process --max-age 60 --cleanup
 ```
 
 ### Options
