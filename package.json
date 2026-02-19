@@ -1,6 +1,6 @@
 {
   "name": "zombie-dev-watcher",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Cross-platform CLI utility to kill zombie dev-server processes (Windows, macOS, Linux)",
   "main": "dist/index.js",
   "bin": {
