@@ -18,7 +18,7 @@ I develop RapidWhisper in my free time and **every donation motivates me to keep
 | 💰 **Streamlabs** | [streamlabs.com/v01gh7/tip](https://streamlabs.com/v01gh7/tip) |
 | 🎁 **Donatex** | [donatex.gg/donate/v01gh7](https://donatex.gg/donate/v01gh7) |
 | ☕ **Ko-fi** | [ko-fi.com/v01gh7](https://ko-fi.com/v01gh7) |
-| 💬 **Discord** | [discord.gg/sZUZKDeq](https://discord.gg/sZUZKDeq) — drop a message that it helps! |
+| 💬 **Discord** | [discord.gg/f37B7eKq](https://discord.gg/f37B7eKq) — drop a message that it helps! |
 
 ---
 
