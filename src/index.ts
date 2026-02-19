@@ -21,16 +21,41 @@ program
   .option("-f, --filter <names>", "Semicolon or comma-separated process names/commands to watch/kill", "bun;node;npm;npx;pnpm;yarn;vite;deno;go;air;python;python3;uvicorn;flask;ruby;rails;java;gradle;mvn;php;swift;dotnet")
   .option("--max-age <minutes>", "Max age in minutes to kill processes (Process mode only)", parseIntArg, 0)
   .option("-d, --dry-run", "Log what would be killed without killing", false)
+  .option("--cleanup", "Run a one-off cleanup of all processes older than --max-age", false)
   .action(async (options) => { // Async for Bun.serve
+    if (options.cleanup) {
+         if (!options.maxAge) {
+             console.error(chalk.red("Error: --cleanup requires --max-age <minutes>"));
+             process.exit(1);
+         }
+         
+         const config: WatcherConfig = {
+            basePorts: [],
+            range: 0,
+            interval: 0,
+            strategy: 'chain', // irrelevant
+            filter: options.filter.split(/[;,]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0),
+            dryRun: options.dryRun || false,
+            maxAge: options.maxAge
+        };
+        
+        const watcher = new ProcessWatcher(config);
+        await watcher.cleanup();
+        process.exit(0);
+        return;
+    }
+
     // 1. Singleton Lock: Try binding from 322 up to 332
     let boundPort = -1;
     let lockServer = null;
 
     for (let p = 322; p < 332; p++) {
         try {
+        // @ts-ignore
             lockServer = Bun.serve({
                 port: p,
-                fetch(req) { return new Response(`Port Watcher Active on ${p}`); }
+                // @ts-ignore
+                fetch(req: Request) { return new Response(`Port Watcher Active on ${p}`); }
             });
             boundPort = p;
             console.log(chalk.gray(`[System] Watcher process bound to port ${p} (Singleton Lock).`));
@@ -52,6 +77,7 @@ program
         process.exit(1);
     }
 
+    const maxAge = options.maxAge || 0;
     const config: WatcherConfig = {
         basePorts: [], // Filled later if port mode
         range: options.range, // Can be ignored in process mode
@@ -59,7 +85,7 @@ program
         strategy: options.strategy as 'chain' | 'kill-base',
         filter: options.filter.split(/[;,]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0),
         dryRun: options.dryRun || false,
-        maxAge: options.maxAge || 0
+        maxAge: maxAge
     };
 
     if (options.mode === 'process') {
@@ -67,7 +93,7 @@ program
         console.log(`Lock Port:  ${chalk.yellow(boundPort)}`);
         console.log(`Filter:    ${chalk.yellow(config.filter.join(', '))}`);
         console.log(`Interval:  ${chalk.yellow(config.interval)}ms`);
-        console.log(`Max Age:   ${chalk.yellow(config.maxAge > 0 ? config.maxAge + 'm' : 'Disabled')}`);
+        console.log(`Max Age:   ${chalk.yellow(maxAge > 0 ? maxAge + 'm' : 'Disabled')}`);
         
         if (config.dryRun) console.log(chalk.bgYellow.black(" DRY RUN MODE "));
 

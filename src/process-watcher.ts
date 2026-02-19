@@ -15,9 +15,44 @@ export class ProcessWatcher extends EventEmitter {
     private intervalId: ReturnType<typeof setInterval> | null = null;
     private knownProcesses: Map<number, ProcessRecord> = new Map(); // PID -> Record
 
+    private serviceStartTime: number;
+
     constructor(config: WatcherConfig) {
         super();
         this.config = config;
+        this.serviceStartTime = Date.now();
+    }
+
+    public async cleanup() {
+        if (!this.config.maxAge || this.config.maxAge <= 0) {
+            console.log(chalk.red("Cleanup requires --max-age to be set > 0"));
+            return;
+        }
+        
+        const maxAge = this.config.maxAge;
+        console.log(chalk.cyan(`[Cleanup] Scanning for processes older than ${maxAge} minutes...`));
+         // 1. Get current processes matching filter
+        const currentProcesses = await getMatchingProcesses(this.config.filter);
+        const maxAgeMs = maxAge * 60 * 1000;
+        const now = Date.now();
+
+        for (const proc of currentProcesses) {
+            // Absolute age check for cleanup
+            const record: ProcessRecord = {
+                 pid: proc.pid,
+                 command: proc.command,
+                 firstSeen: now, // Doesn't matter for this check
+                 creationDate: proc.creationDate
+            };
+            
+            const startTime = this.getStartTime(record);
+            const age = now - startTime;
+            
+            if (age > maxAgeMs) {
+                await this.kill(proc.pid, `Cleanup: Age ${Math.floor(age/60000)}m > ${this.config.maxAge}m`);
+            }
+        }
+        console.log(chalk.cyan(`[Cleanup] Done.`));
     }
 
     public async start() {
@@ -29,8 +64,10 @@ export class ProcessWatcher extends EventEmitter {
             return;
         }
 
-        if (this.config.maxAge > 0) {
-            console.log(chalk.cyan(`[ProcessWatcher] Max Age: ${this.config.maxAge} minutes`));
+        const maxAge = this.config.maxAge || 0;
+        if (maxAge > 0) {
+            console.log(chalk.cyan(`[ProcessWatcher] Max Age: ${maxAge} minutes`));
+            console.log(chalk.cyan(`[ProcessWatcher] Note: Existing processes have a grace period of ${maxAge}m from now.`));
         }
         
         // Initial scan
@@ -125,12 +162,20 @@ export class ProcessWatcher extends EventEmitter {
         }
 
         // 5. Logic: Max Age
-        if (this.config.maxAge > 0) {
-            const maxAgeMs = this.config.maxAge * 60 * 1000;
+        const maxAge = this.config.maxAge || 0;
+        if (maxAge > 0) {
+            const maxAgeMs = maxAge * 60 * 1000;
             for (const record of this.knownProcesses.values()) {
-                const age = now - this.getStartTime(record);
+                const startTime = this.getStartTime(record);
+                // Relative Age Logic:
+                // Effective Start Time = MAX(ProcessStart, WatcherStart)
+                // If process started BEFORE watcher, age is effectively 0 at start.
+                
+                const effectiveStart = Math.max(startTime, this.serviceStartTime);
+                const age = now - effectiveStart;
+                
                 if (age > maxAgeMs) {
-                    await this.kill(record.pid, `Max Age Exceeded (${Math.floor(age/1000/60)}m > ${this.config.maxAge}m)`);
+                    await this.kill(record.pid, `Max Age Exceeded (${Math.floor(age/1000/60)}m > ${maxAge}m)`);
                 }
             }
         }

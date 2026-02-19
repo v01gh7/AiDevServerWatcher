@@ -94,6 +94,7 @@ zombie-watcher --mode process --max-age 30
 | `-r, --range` | Port range to scan | `20` |
 | `-f, --filter` | Filter process names (semicolon separated) | `bun;node;npm;...` |
 | `--max-age` | Kill processes older than N minutes (Process Mode) | `0` (Disabled) |
+| `--cleanup` | One-off kill of processes older than max-age | `false` |
 | `-d, --dry-run` | Log what would be killed without killing | `false` |
 
 ## Installation / Build
