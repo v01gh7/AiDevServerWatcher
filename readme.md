@@ -4,6 +4,24 @@
 
 A simplified cross-platform utility to prevent "zombie" dev-server processes from accumulating on your system. 
 
+
+## 💖 Support the Project
+
+**The program is free, but even a 30-cent donation helps!**
+
+I develop RapidWhisper in my free time and **every donation motivates me to keep improving it**. Even if you can't donate — **just hop into Discord and say that the app helps you**. That feedback alone makes it all worth it!
+
+**Ways to support:**
+
+| Platform | Link |
+|----------|------|
+| 💰 **Streamlabs** | [streamlabs.com/v01gh7/tip](https://streamlabs.com/v01gh7/tip) |
+| 🎁 **Donatex** | [donatex.gg/donate/v01gh7](https://donatex.gg/donate/v01gh7) |
+| ☕ **Ko-fi** | [ko-fi.com/v01gh7](https://ko-fi.com/v01gh7) |
+| 💬 **Discord** | [discord.gg/sZUZKDeq](https://discord.gg/sZUZKDeq) — drop a message that it helps! |
+
+---
+
 ## 📥 Download Latest Release
 
 | Platform | Architecture | Download Link |
